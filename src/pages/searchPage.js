@@ -1,5 +1,17 @@
-import { ButtonBase, Grid, IconButton, InputAdornment, TextField } from "@material-ui/core";
+import {
+	ButtonBase,
+	Grid,
+	IconButton,
+	InputAdornment,
+	TextField,
+	Dialog,
+	DialogTitle,
+	DialogContent,
+	DialogActions,
+	Button,
+} from "@material-ui/core";
 import SearchIcon from "@material-ui/icons/Search";
+import { Pagination } from "@material-ui/lab";
 import React from "react";
 import { Redirect } from "react-router-dom";
 import SpotifyWebApi from "spotify-web-api-js";
@@ -14,68 +26,133 @@ export default class SearchPage extends React.Component {
 			token: "",
 			searchTerm: "",
 			dataSource: [],
-			getAlbums: props.getAlbums? props.getAlbums : false,
+			getAlbums: false,
+			totalPages: 1,
+			offset: 0,
+			page: 0,
+			timeout: 0,
+			error: null,
 		};
 	}
 
 	componentDidMount() {
+		this.timer = null;
 		let hash = window.location.hash.substr(1);
 		let token = hash.split("&")[0].split("=")[1];
-		this.setState({ token: token,  getAlbums: false });
+		this.setState({ token: token });
 		spotify.setAccessToken(token);
 		this.checkForPreviousState();
 	}
 
+	componentWillUpdate() {}
+
 	checkForPreviousState = () => {
-		let prev_state = localStorage.getItem('searchTerm')
-		let data = localStorage.getItem('data')
-		if (prev_state !== null){
-			localStorage.removeItem('searchTerm')
-			localStorage.removeItem('data')
-			this.setState({searchTerm: prev_state, dataSource: JSON.parse(data)})
-		} 
-	}
+		let search_term = localStorage.getItem("searchTerm");
+		let data = localStorage.getItem("data");
+		let total_pages = localStorage.getItem("totalPages");
+		let page = localStorage.getItem("page");
+		if (search_term !== null) {
+			if (this.state.getAlbums) {
+				localStorage.removeItem("searchTerm");
+				localStorage.removeItem("data");
+				localStorage.removeItem("totalPages");
+				localStorage.removeItem("page");
+			}
+			this.setState({
+				searchTerm: search_term,
+				dataSource: JSON.parse(data),
+				totalPages: parseInt(total_pages),
+				page: parseInt(page),
+			});
+		}
+	};
 
 	handleChange = (e) => {
-		this.setState({searchTerm: e.target.value})
-	}
+		clearTimeout(this.timer);
+		this.setState({ searchTerm: e.target.value });
+		this.timer = setTimeout(() => {
+			if (this.state.searchTerm.trim() !== "") this.search();
+		}, 1000);
+	};
 
 	handleKeyPress = (e) => {
 		e.persist();
 		this.setState({ searchTerm: e.target.value });
-
-		// Check if the pressed key is return and the search field is not empty
-		if (e.keyCode === 13 && e.target.value !== "") {
+		if (e.keyCode === 13 && e.target.value.trim() !== "") {
 			this.search();
-		} else {
-			if (this.state.searchTerm === "") {
-				this.setState({dataSource: []})
-			}
-			else{
-			// If user entered a character in the search field wait for 1 second before sending the request
-			setTimeout(this.search, 1000);
-			}
+		}
+		if (e.keyCode === 8 && this.state.searchTerm === "") {
+			this.setState({ dataSource: [], totalPages: 0, page: 0 });
 		}
 	};
 
-	search = () => {
+	search = (offset = 0, page = 1) => {
 		let searchTerm = this.state.searchTerm;
 		spotify
-			.searchArtists(searchTerm)
+			.searchArtists(searchTerm, { offset: offset })
 			.then((res) => {
-				this.setState({ dataSource: res.artists.items });
+				let total_pages = Math.ceil(res.artists.total / 20);
+				if (total_pages > 100) {
+					total_pages = 100;
+				}
+				this.setState({
+					dataSource: res.artists.items,
+					totalPages: total_pages,
+					page: page,
+				});
 			})
-			.catch((err) => console.log(err));
+			.catch((err) => {
+				if (err.status === 401) {
+					this.setState({ error: "token" });
+				}
+			});
+	};
+
+	loadPage = (page) => {
+		let offset = page * 20 - 20;
+		this.search(offset, page);
+	};
+
+	login = () => {
+		window.location =
+			"https://accounts.spotify.com/en/authorize?client_id=07bf4452c6e048a08f5ab7f6d00d16fc&redirect_uri=http://localhost:3000/search&response_type=token";
 	};
 
 	render() {
 		if (this.state.getAlbums === true) {
-			localStorage.setItem('searchTerm', this.state.searchTerm)
-			localStorage.setItem('data', JSON.stringify(this.state.dataSource))
-			return <Redirect push to={{pathname: "/albums", state: {id: this.state.id, artist_name: this.state.artist_name}}}></Redirect>
+			localStorage.setItem("searchTerm", this.state.searchTerm);
+			localStorage.setItem("data", JSON.stringify(this.state.dataSource));
+			localStorage.setItem("totalPages", this.state.totalPages);
+			localStorage.setItem("page", this.state.page);
+			return (
+				<Redirect
+					push
+					to={{
+						pathname: "/albums",
+						state: { id: this.state.id, artist_name: this.state.artist_name },
+					}}
+				></Redirect>
+			);
 		}
 		return (
 			<>
+				{this.state.error !== null ? (
+					<Dialog open={true}>
+						<DialogTitle>Token expired</DialogTitle>
+						<DialogContent>
+							Your session has expired please login again
+						</DialogContent>
+						<DialogActions>
+							<Button
+								onClick={() => {
+									this.login();
+								}}
+							>
+								Login
+							</Button>
+						</DialogActions>
+					</Dialog>
+				) : null}
 				<header>
 					<TextField
 						label="Search"
@@ -83,7 +160,7 @@ export default class SearchPage extends React.Component {
 						InputProps={{
 							endAdornment: (
 								<InputAdornment>
-									<IconButton onClick={()=>this.search()}>
+									<IconButton onClick={() => this.search()}>
 										<SearchIcon />
 									</IconButton>
 								</InputAdornment>
@@ -91,8 +168,8 @@ export default class SearchPage extends React.Component {
 						}}
 						variant="filled"
 						fullWidth
-						onChange={(e) => {this.handleChange(e)}}
-						onKeyDown={this.handleKeyPress}
+						onChange={(e) => this.handleChange(e)}
+						onKeyDown={(e) => this.handleKeyPress(e)}
 						value={this.state.searchTerm}
 					></TextField>
 				</header>
@@ -100,9 +177,13 @@ export default class SearchPage extends React.Component {
 					<Grid container spacing={10} justify="center">
 						{this.state.dataSource.map((artist) => (
 							<Grid key={artist.id} item>
-								<ButtonBase  
+								<ButtonBase
 									onClick={() =>
-										this.setState({ getAlbums: true, id: artist.id, artist_name: artist.name })
+										this.setState({
+											getAlbums: true,
+											id: artist.id,
+											artist_name: artist.name,
+										})
 									}
 								>
 									<ArtistCard
@@ -116,6 +197,14 @@ export default class SearchPage extends React.Component {
 								</ButtonBase>
 							</Grid>
 						))}
+						{this.state.totalPages !== 1 ? (
+							<Pagination
+								size="large"
+								count={this.state.totalPages}
+								page={this.state.page}
+								onChange={(event, page) => this.loadPage(page)}
+							/>
+						) : null}
 					</Grid>
 				</div>
 			</>

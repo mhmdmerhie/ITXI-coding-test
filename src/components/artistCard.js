@@ -1,4 +1,10 @@
-import { Card, CardContent, CardMedia, Typography } from "@material-ui/core";
+import {
+	Card,
+	CardContent,
+	CardMedia,
+	Typography,
+	Box,
+} from "@material-ui/core";
 import { Rating } from "@material-ui/lab";
 import React from "react";
 
@@ -9,7 +15,10 @@ export default class ArtistCard extends React.Component {
 		this.state = {
 			id: props.id,
 			name: props.name,
-			image: typeof props.image === "undefined" ? "https://www.theyearinpictures.co.uk/images//image-placeholder.png " : props.image.url,
+			image:
+				typeof props.image === "undefined"
+					? "https://www.theyearinpictures.co.uk/images//image-placeholder.png "
+					: props.image.url,
 			followers: props.followers,
 			popularity: props.popularity,
 			uri: props.uri,
@@ -18,10 +27,9 @@ export default class ArtistCard extends React.Component {
 	}
 
 	render() {
-		
 		return (
-			<Card style={{ backgroundColor: "#dedede" }}>
-				
+			<Box width={300}>
+				<Card style={{ backgroundColor: "#dedede" }}>
 					<CardContent>
 						<CardMedia
 							image={this.state.image}
@@ -33,8 +41,8 @@ export default class ArtistCard extends React.Component {
 							}}
 							title={this.state.artist_name}
 						/>
-						<Typography noWrap>{this.state.name}</Typography>
-						<Typography variant="body2" color="textSecondary" noWrap>
+						<Typography>{this.state.name}</Typography>
+						<Typography variant="body2" color="textSecondary">
 							{this.state.followers
 								.toString()
 								.replace(/\B(?=(\d{3})+(?!\d))/g, ",")}{" "}
@@ -46,8 +54,8 @@ export default class ArtistCard extends React.Component {
 							readOnly
 						/>
 					</CardContent>
-				
-			</Card>
+				</Card>
+			</Box>
 		);
 	}
 }

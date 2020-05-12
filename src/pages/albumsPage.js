@@ -2,7 +2,7 @@ import { AppBar, Grid, Typography } from "@material-ui/core";
 import React from "react";
 import SpotifyWebApi from "spotify-web-api-js";
 import AlbumCard from "../components/albumCard";
-import SearchPage from "./searchPage";
+import { Pagination } from "@material-ui/lab";
 
 let spotify = new SpotifyWebApi();
 export default class AlbumsPage extends React.Component {
@@ -13,36 +13,50 @@ export default class AlbumsPage extends React.Component {
 			id: this.props.location.state.id,
 			artist_name: this.props.location.state.artist_name,
 			dataSource: [],
-			renderArtists: false,
+			totalPages: 0,
+			offset: 0,
+			page: 0,
 		};
 	}
 
 	componentDidMount() {
-		spotify
-			.getArtistAlbums(this.state.id)
-			.then((res) => {
-				let data = res.items;
-				this.setState({ dataSource: data });
-			})
-			.catch((err) => console.log(err));
+		this.getAlbums();
 	}
 
-	renderArtists = () => {
-		this.setState({ renderArtists: true });
+	getAlbums = (offset = 0, page = 1) => {
+		spotify
+			.getArtistAlbums(this.state.id, { offset: offset })
+			.then((res) => {
+				let total_pages = Math.ceil(res.total / 20);
+				if (total_pages > 100) {
+					total_pages = 100;
+				}
+				let data = res.items;
+				this.setState({
+					dataSource: data,
+					totalPages: total_pages,
+					page: page,
+				});
+			})
+			.catch((err) => console.log(err));
+	};
+
+	loadPage = (page) => {
+		let offset = page * 20 - 20;
+		this.getAlbums(offset, page);
 	};
 
 	render() {
-		if (this.state.renderArtists) {
-			return <SearchPage getAlbums={false}></SearchPage>;
-		}
 		return (
 			<>
-				<AppBar style={{backgroundColor: "#dedede", color:"black"}}>
-					<Typography variant="h6" style={{padding: 10}}>{this.state.artist_name} albums</Typography>
+				<AppBar style={{ backgroundColor: "#dedede", color: "black" }}>
+					<Typography variant="h6" style={{ padding: 10 }}>
+						{this.state.artist_name} albums
+					</Typography>
 				</AppBar>
 
 				<div style={{ marginTop: 20, padding: 30 }}>
-					<Grid container spacing={10} style={{paddingTop: 20}}>
+					<Grid container spacing={10} style={{ paddingTop: 20 }} justify="center">
 						{this.state.dataSource.map((album) => (
 							<Grid key={album.id} item>
 								<AlbumCard
@@ -56,6 +70,14 @@ export default class AlbumsPage extends React.Component {
 								></AlbumCard>
 							</Grid>
 						))}
+						{this.state.totalPages !== 1 ? (
+							<Pagination
+								size="large"
+								count={this.state.totalPages}
+								page={this.state.page}
+								onChange={(event, page) => this.loadPage(page)}
+							/>
+						) : null}
 					</Grid>
 				</div>
 			</>
