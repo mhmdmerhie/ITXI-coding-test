@@ -116,6 +116,8 @@ export default class SearchPage extends React.Component {
 					case 404:
 						this.setState({ error: 404 });
 						break;
+					case 500:
+						this.setState({error: "server"})
 					default:
 						break;
 				}
@@ -158,6 +160,8 @@ export default class SearchPage extends React.Component {
 						No results found
 					</Typography>
 				);
+			case "server":
+				return <Redirect push to="/error"></Redirect>
 			default:
 				break;
 		}
@@ -228,7 +232,7 @@ export default class SearchPage extends React.Component {
 						))}
 					</Grid>
 				</div>
-				{this.state.totalPages !== 1 ? (
+				{this.state.totalPages > 1 ? (
 					<Grid container justify="center">
 						<Pagination
 							size="large"

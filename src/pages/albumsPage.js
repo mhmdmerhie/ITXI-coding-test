@@ -78,7 +78,7 @@ export default class AlbumsPage extends React.Component {
 						))}
 					</Grid>
 				</div>
-				{this.state.totalPages !== 1 ? (
+				{this.state.totalPages > 1 ? (
 					<Grid container justify="center">
 						<Pagination
 							size="large"
