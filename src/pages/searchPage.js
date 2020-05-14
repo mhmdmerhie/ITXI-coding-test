@@ -9,6 +9,8 @@ import {
 	DialogContent,
 	DialogActions,
 	Button,
+	Typography,
+	BottomNavigation,
 } from "@material-ui/core";
 import SearchIcon from "@material-ui/icons/Search";
 import { Pagination } from "@material-ui/lab";
@@ -43,8 +45,6 @@ export default class SearchPage extends React.Component {
 		spotify.setAccessToken(token);
 		this.checkForPreviousState();
 	}
-
-	componentWillUpdate() {}
 
 	checkForPreviousState = () => {
 		let search_term = localStorage.getItem("searchTerm");
@@ -82,7 +82,7 @@ export default class SearchPage extends React.Component {
 			this.search();
 		}
 		if (e.keyCode === 8 && this.state.searchTerm === "") {
-			this.setState({ dataSource: [], totalPages: 0, page: 0 });
+			this.setState({ dataSource: [], totalPages: 1, page: 0, error: null });
 		}
 	};
 
@@ -91,19 +91,33 @@ export default class SearchPage extends React.Component {
 		spotify
 			.searchArtists(searchTerm, { offset: offset })
 			.then((res) => {
-				let total_pages = Math.ceil(res.artists.total / 20);
-				if (total_pages > 100) {
-					total_pages = 100;
+				console.log(res);
+				if (res.artists.items.length === 0) {
+					this.setState({ error: "no results" });
+				} else {
+					let total_pages = Math.floor(res.artists.total / 20);
+					if (total_pages > 100) {
+						total_pages = 100;
+					}
+					this.setState({
+						dataSource: res.artists.items,
+						totalPages: total_pages,
+						page: page,
+						error: null,
+					});
 				}
-				this.setState({
-					dataSource: res.artists.items,
-					totalPages: total_pages,
-					page: page,
-				});
 			})
 			.catch((err) => {
-				if (err.status === 401) {
-					this.setState({ error: "token" });
+				console.log(err);
+				switch (err.status) {
+					case 401:
+						this.setState({ error: "unauthorized" });
+						break;
+					case 404:
+						this.setState({ error: 404 });
+						break;
+					default:
+						break;
 				}
 			});
 	};
@@ -116,6 +130,37 @@ export default class SearchPage extends React.Component {
 	login = () => {
 		window.location =
 			"https://accounts.spotify.com/en/authorize?client_id=07bf4452c6e048a08f5ab7f6d00d16fc&redirect_uri=http://localhost:3000/search&response_type=token";
+	};
+
+	renderError = () => {
+		switch (this.state.error) {
+			case "unauthorized":
+				return (
+					<Dialog open={true}>
+						<DialogTitle>Token expired</DialogTitle>
+						<DialogContent>
+							Your session has expired please login again
+						</DialogContent>
+						<DialogActions>
+							<Button
+								onClick={() => {
+									this.login();
+								}}
+							>
+								Login
+							</Button>
+						</DialogActions>
+					</Dialog>
+				);
+			case "no results":
+				return (
+					<Typography variant="h5" color="textSecondary">
+						No results found
+					</Typography>
+				);
+			default:
+				break;
+		}
 	};
 
 	render() {
@@ -136,23 +181,6 @@ export default class SearchPage extends React.Component {
 		}
 		return (
 			<>
-				{this.state.error !== null ? (
-					<Dialog open={true}>
-						<DialogTitle>Token expired</DialogTitle>
-						<DialogContent>
-							Your session has expired please login again
-						</DialogContent>
-						<DialogActions>
-							<Button
-								onClick={() => {
-									this.login();
-								}}
-							>
-								Login
-							</Button>
-						</DialogActions>
-					</Dialog>
-				) : null}
 				<header>
 					<TextField
 						label="Search"
@@ -175,6 +203,7 @@ export default class SearchPage extends React.Component {
 				</header>
 				<div style={{ marginTop: 20, padding: 30 }}>
 					<Grid container spacing={10} justify="center">
+						{this.state.error !== null ? this.renderError() : null}
 						{this.state.dataSource.map((artist) => (
 							<Grid key={artist.id} item>
 								<ButtonBase
@@ -197,16 +226,18 @@ export default class SearchPage extends React.Component {
 								</ButtonBase>
 							</Grid>
 						))}
-						{this.state.totalPages !== 1 ? (
-							<Pagination
-								size="large"
-								count={this.state.totalPages}
-								page={this.state.page}
-								onChange={(event, page) => this.loadPage(page)}
-							/>
-						) : null}
 					</Grid>
 				</div>
+				{this.state.totalPages !== 1 ? (
+					<Grid container justify="center">
+						<Pagination
+							size="large"
+							count={this.state.totalPages}
+							page={this.state.page}
+							onChange={(event, page) => this.loadPage(page)}
+						/>
+					</Grid>
+				) : null}
 			</>
 		);
 	}

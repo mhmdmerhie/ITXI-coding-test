@@ -27,7 +27,8 @@ export default class AlbumsPage extends React.Component {
 		spotify
 			.getArtistAlbums(this.state.id, { offset: offset })
 			.then((res) => {
-				let total_pages = Math.ceil(res.total / 20);
+				console.log(res);
+				let total_pages = Math.floor(res.total / 20);
 				if (total_pages > 100) {
 					total_pages = 100;
 				}
@@ -56,7 +57,12 @@ export default class AlbumsPage extends React.Component {
 				</AppBar>
 
 				<div style={{ marginTop: 20, padding: 30 }}>
-					<Grid container spacing={10} style={{ paddingTop: 20 }} justify="center">
+					<Grid
+						container
+						spacing={10}
+						style={{ paddingTop: 20 }}
+						justify="center"
+					>
 						{this.state.dataSource.map((album) => (
 							<Grid key={album.id} item>
 								<AlbumCard
@@ -70,16 +76,18 @@ export default class AlbumsPage extends React.Component {
 								></AlbumCard>
 							</Grid>
 						))}
-						{this.state.totalPages !== 1 ? (
-							<Pagination
-								size="large"
-								count={this.state.totalPages}
-								page={this.state.page}
-								onChange={(event, page) => this.loadPage(page)}
-							/>
-						) : null}
 					</Grid>
 				</div>
+				{this.state.totalPages !== 1 ? (
+					<Grid container justify="center">
+						<Pagination
+							size="large"
+							count={this.state.totalPages}
+							page={this.state.page}
+							onChange={(event, page) => this.loadPage(page)}
+						/>
+					</Grid>
+				) : null}
 			</>
 		);
 	}

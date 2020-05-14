@@ -23,8 +23,13 @@ export default class ArtistCard extends React.Component {
 			popularity: props.popularity,
 			uri: props.uri,
 			getAlbums: false,
+			showFullname: false,
 		};
 	}
+
+	toggleNoWrap = () => {
+		this.setState({ showFullname: !this.state.showFullname });
+	};
 
 	render() {
 		return (
@@ -41,7 +46,20 @@ export default class ArtistCard extends React.Component {
 							}}
 							title={this.state.artist_name}
 						/>
-						<Typography>{this.state.name}</Typography>
+						<div
+							onMouseEnter={this.toggleNoWrap}
+							onMouseLeave={this.toggleNoWrap}
+						>
+							{this.state.showFullname ? (
+								<Typography>
+								{this.state.name}
+							</Typography>
+							) : (
+								<Typography noWrap display="block">
+									{this.state.name}
+								</Typography>
+							)}
+						</div>
 						<Typography variant="body2" color="textSecondary">
 							{this.state.followers
 								.toString()
