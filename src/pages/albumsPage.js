@@ -3,6 +3,7 @@ import React from "react";
 import SpotifyWebApi from "spotify-web-api-js";
 import AlbumCard from "../components/albumCard";
 import { Pagination } from "@material-ui/lab";
+import { Helmet } from "react-helmet";
 
 let spotify = new SpotifyWebApi();
 export default class AlbumsPage extends React.Component {
@@ -20,6 +21,8 @@ export default class AlbumsPage extends React.Component {
 	}
 
 	componentDidMount() {
+		let token = localStorage.getItem("token");
+		spotify.setAccessToken(token);
 		this.getAlbums();
 	}
 
@@ -50,6 +53,9 @@ export default class AlbumsPage extends React.Component {
 	render() {
 		return (
 			<>
+			<Helmet>
+				<title>{this.state.artist_name}</title>
+			</Helmet>
 				<AppBar style={{ backgroundColor: "#dedede", color: "black" }}>
 					<Typography variant="h6" style={{ padding: 10 }}>
 						{this.state.artist_name} albums

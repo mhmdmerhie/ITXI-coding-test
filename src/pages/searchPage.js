@@ -18,6 +18,7 @@ import React from "react";
 import { Redirect } from "react-router-dom";
 import SpotifyWebApi from "spotify-web-api-js";
 import ArtistCard from "../components/artistCard";
+import { Helmet } from "react-helmet";
 
 let spotify = new SpotifyWebApi();
 export default class SearchPage extends React.Component {
@@ -38,34 +39,24 @@ export default class SearchPage extends React.Component {
 	}
 
 	componentDidMount() {
+		console.log(this.props.location.state)
 		this.timer = null;
-		let hash = window.location.hash.substr(1);
-		let token = hash.split("&")[0].split("=")[1];
-		this.setState({ token: token });
+		let token = localStorage.getItem("token");
 		spotify.setAccessToken(token);
-		this.checkForPreviousState();
+		typeof(this.props.location.state)!== "undefined"
+			? (this.getPrevState())
+			: (this.state = this.state);
 	}
 
-	checkForPreviousState = () => {
-		let search_term = localStorage.getItem("searchTerm");
-		let data = localStorage.getItem("data");
-		let total_pages = localStorage.getItem("totalPages");
-		let page = localStorage.getItem("page");
-		if (search_term !== null) {
-			if (this.state.getAlbums) {
-				localStorage.removeItem("searchTerm");
-				localStorage.removeItem("data");
-				localStorage.removeItem("totalPages");
-				localStorage.removeItem("page");
-			}
-			this.setState({
-				searchTerm: search_term,
-				dataSource: JSON.parse(data),
-				totalPages: parseInt(total_pages),
-				page: parseInt(page),
-			});
-		}
-	};
+	getPrevState = () => {
+		let prev_state = this.props.location.state;
+		this.setState({
+			searchTerm: prev_state.searchTerm,
+			dataSource: prev_state.dataSource,
+			totalPages: prev_state.totalPages,
+			page: prev_state.page
+		})
+	}
 
 	handleChange = (e) => {
 		clearTimeout(this.timer);
@@ -117,7 +108,7 @@ export default class SearchPage extends React.Component {
 						this.setState({ error: 404 });
 						break;
 					case 500:
-						this.setState({error: "server"})
+						this.setState({ error: "server" });
 					default:
 						break;
 				}
@@ -131,7 +122,7 @@ export default class SearchPage extends React.Component {
 
 	login = () => {
 		window.location =
-			"https://accounts.spotify.com/en/authorize?client_id=07bf4452c6e048a08f5ab7f6d00d16fc&redirect_uri=http://localhost:3000/search&response_type=token";
+			"https://accounts.spotify.com/en/authorize?client_id=07bf4452c6e048a08f5ab7f6d00d16fc&redirect_uri=http://localhost:3000/auth&response_type=token";
 	};
 
 	renderError = () => {
@@ -161,23 +152,24 @@ export default class SearchPage extends React.Component {
 					</Typography>
 				);
 			case "server":
-				return <Redirect push to="/error"></Redirect>
+				return <Redirect push to="/error"></Redirect>;
 			default:
 				break;
 		}
 	};
 
+	openAlbums = (artist) => {
+		this.props.history.push("/search", this.state);
+	};
+
 	render() {
 		if (this.state.getAlbums === true) {
-			localStorage.setItem("searchTerm", this.state.searchTerm);
-			localStorage.setItem("data", JSON.stringify(this.state.dataSource));
-			localStorage.setItem("totalPages", this.state.totalPages);
-			localStorage.setItem("page", this.state.page);
+			this.props.history.push("/search", this.state);
 			return (
 				<Redirect
 					push
 					to={{
-						pathname: "/albums",
+						pathname: "/albums/id=" + this.state.id,
 						state: { id: this.state.id, artist_name: this.state.artist_name },
 					}}
 				></Redirect>
@@ -185,6 +177,9 @@ export default class SearchPage extends React.Component {
 		}
 		return (
 			<>
+				<Helmet>
+					<title>Spotify Search</title>
+				</Helmet>
 				<header>
 					<TextField
 						label="Search"
